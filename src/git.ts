@@ -20,8 +20,31 @@ async function attemptResolveBranchName(): Promise<string> {
 
 export default async function commit() {
   const branchName = await attemptResolveBranchName();
-  console.log('branchName', branchName);
-  const commitMessage = await inquirer.prompt([
+
+  addInitialCommitMessage(branchName).then((success) => {
+    if (success) {
+      addCommitBody();
+    }
+  });
+}
+
+async function addCommitBody() {
+  const addMessage = await confirm({ message: 'Add a body to the commit?' });
+  if (addMessage) {
+    const shell = spawn('git', ['commit', '--amend'], { stdio: 'inherit' });
+    shell.on('exit', (code: number) => {
+      if (code === 0) {
+        console.log('Commit successful!');
+      } else {
+        console.error('Commit failed');
+      }
+    });
+  }
+}
+
+
+async function addInitialCommitMessage(branchName: string): Promise<boolean>{
+    const commitMessage = await inquirer.prompt([
     {
       type: 'list',
       name: 'type',
@@ -46,20 +69,9 @@ export default async function commit() {
     exec(`git commit -m "${commitMessage.type}: ${commitMessage.message}"`, (err, _stdout) => {
       if (err) {
         console.error(err);
-        return process.exit(1);
+        return false;
       }
     });
   }
-
-  const addMessage = await confirm({ message: 'Add a body to the commit?' });
-  if (addMessage) {
-    const shell = spawn('git', ['commit', '--amend'], { stdio: 'inherit' });
-    shell.on('exit', (code: number) => {
-      if (code === 0) {
-        console.log('Commit successful!');
-      } else {
-        console.error('Commit failed');
-      }
-    });
-  }
+  return true;
 }
